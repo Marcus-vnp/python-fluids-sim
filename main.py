@@ -24,7 +24,7 @@ while running: # Loop do Programa
             running = False
 
     # Test da criacao da Grade
-    desenhar_grade(screen, X, Y)
+    desenhar_grade(screen)
 
     pg.display.flip() # atualiza a tela
     clock.tick(FPS)
