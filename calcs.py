@@ -21,3 +21,13 @@ def pixel_para_celula(x, y):
     return int(i), int(j)
 
 # Fazer funcao de Campo de Rotacao para demosntracao
+def campo_horizontal(U0=1.0):
+    u = np.full((Nx, Ny), U0)
+    v = np.zeros((Nx, Ny))
+    return u, v
+
+def campo_rotacao(X, Y, omega=1.0):
+    Xc, Yc = X.mean(), Y.mean()
+    u = -omega * (Y - Yc)
+    v =  omega * (X - Xc)
+    return u, v
