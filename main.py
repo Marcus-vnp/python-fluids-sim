@@ -1,81 +1,91 @@
-# main.py — Semana 3
-
-import pygame as pg
 import numpy as np
+import pygame as pg
 
-from default import *
-from calcs import *
-from render import *
-from simulacao import *
-
-pg.init()
-screen = pg.display.set_mode(RESOLUCAO)
-clock = pg.time.Clock()
-running = True
-
-# Grade e campo
-X, Y = criar_grade()
-campo_atual = "rotacao"
-u, v = campo_rotacao(X, Y, omega=1.0)
-
-# Corante
-c = np.zeros((Nx, Ny))
-
-# Mancha inicial no centro
-cx, cy = X.mean(), Y.mean()
-c = np.exp(-(((X - cx)**2 + (Y - cy)**2) / (2 * 0.15**2)))
-
-D = 0.0005                 # difusão
-dt = calcular_dt(u, v, D)  # ajusta automaticamente
-
-pausado = False
+from calcs import campo_horizontal, campo_rotacao, criar_grade
+from default import DIFUSAO, ESCALA_TEMPO, FPS, INTERVALO_REAL_MAXIMO, Nx, Ny, RESOLUCAO
+from interacao import Arraste, aceleracao_trajetoria, integrar_perturbacao
+from render import desenhar_corante, desenhar_interacao
+from simulacao import avancar_intervalo
 
 
-def desenhar_corante(c):
-    max_c = max(c.max(), 1e-6)
-    for i in range(0, Nx, 2):           # passo 2: desenha a cada 2 células
-        for j in range(0, Ny, 2):
-            valor = c[i, j] / max_c
-            r = int(255 * min(1.0, valor * 2))
-            g = int(255 * max(0.0, valor * 2 - 1))
-            b = int(255 * max(0.0, valor * 2 - 1) * 0.3)
-            x, y = celula_para_pixel(i, j)
-            w = int(TAMANHO_CELULA_X * 2) + 1
-            h = int(TAMANHO_CELULA_Y * 2) + 1
-            pg.draw.rect(screen, (r, g, b), (x, y - h, w, h))
-
-
-while running:
-    for event in pg.event.get():
-        if event.type == pg.QUIT:
-            running = False
-        elif event.type == pg.KEYDOWN:
-            if event.key == pg.K_SPACE:
-                pausado = not pausado
-            elif event.key == pg.K_r:
-                c = np.exp(-(((X - cx)**2 + (Y - cy)**2) / (2 * 0.15**2)))
-            elif event.key == pg.K_1:
-                campo_atual = "horizontal"
-                u, v = campo_horizontal()
-                dt = calcular_dt(u, v, D)
-            elif event.key == pg.K_2:
-                campo_atual = "rotacao"
-                u, v = campo_rotacao(X, Y, omega=1.0)
-                dt = calcular_dt(u, v, D)
-
-    # --- Atualizar ---
-    if not pausado:
-        c = avancar(c, u, v, D, dt)
-
-    # --- Desenhar ---
-    screen.fill((10, 10, 10))
-    desenhar_corante(c)
-
+def main():
+    pg.init()
+    tela = pg.display.set_mode(RESOLUCAO)
+    grade_rgb = pg.Surface((Nx, Ny)).convert(tela)
     fonte = pg.font.SysFont("consolas", 16)
-    texto = f"Campo: {campo_atual} | dt: {dt:.4f} | {'PAUSADO' if pausado else 'rodando'}"
-    screen.blit(fonte.render(texto, True, (230, 230, 230)), (10, 10))
+    relogio = pg.time.Clock()
 
-    pg.display.flip()
-    clock.tick(FPS)
+    X, Y = criar_grade()
+    campo_atual = "rotacao"
+    u_base, v_base = campo_rotacao(X, Y)
+    inicial = np.exp(-((X - X.mean())**2 + (Y - Y.mean())**2) / (2 * 0.15**2))
+    c = inicial.copy()
+    u_perturbado, v_perturbado = np.zeros_like(X), np.zeros_like(Y)
+    ax, ay = np.zeros_like(X), np.zeros_like(Y)
+    arraste = Arraste()
+    pausado = False
+    com_foco = True
+    dt = 0.0
 
-pg.quit()
+    while True:
+        dt_real = relogio.tick(FPS) / 1000
+        for evento in pg.event.get():
+            if evento.type == pg.QUIT:
+                pg.quit()
+                return
+            if evento.type in (pg.WINDOWLEAVE, pg.WINDOWFOCUSLOST):
+                arraste.cancelar()
+                arraste.cursor = None
+                if evento.type == pg.WINDOWFOCUSLOST:
+                    com_foco = False
+            elif evento.type == pg.WINDOWFOCUSGAINED:
+                com_foco = True
+            elif evento.type == pg.KEYDOWN:
+                if evento.key == pg.K_SPACE:
+                    pausado = not pausado
+                    arraste.cancelar()
+                elif evento.key in (pg.K_r, pg.K_1, pg.K_2):
+                    if evento.key == pg.K_r:
+                        c = inicial.copy()
+                    elif evento.key == pg.K_1:
+                        campo_atual = "horizontal"
+                        u_base, v_base = campo_horizontal()
+                    else:
+                        campo_atual = "rotacao"
+                        u_base, v_base = campo_rotacao(X, Y)
+                    u_perturbado.fill(0)
+                    v_perturbado.fill(0)
+                    arraste.cancelar()
+            elif evento.type == pg.MOUSEWHEEL and com_foco:
+                arraste.ajustar_raio(evento.y)
+            elif evento.type == pg.MOUSEBUTTONDOWN and evento.button == 1 and com_foco and not pausado:
+                arraste.pressionar(evento.pos)
+            elif evento.type == pg.MOUSEMOTION and com_foco:
+                arraste.mover(evento.pos, evento.buttons[0] and not pausado)
+            elif evento.type == pg.MOUSEBUTTONUP and evento.button == 1:
+                if com_foco and not pausado:
+                    arraste.mover(evento.pos, True)
+                arraste.soltar()
+
+        forca = (0.0, 0.0)
+        if np.isfinite(dt_real) and dt_real > 0 and not pausado:
+            intervalo = min(dt_real, INTERVALO_REAL_MAXIMO) * ESCALA_TEMPO
+            forca = aceleracao_trajetoria(arraste.segmentos, arraste.raio, dt_real, X, Y, ax, ay)
+            integrar_perturbacao(u_perturbado, v_perturbado, ax, ay, intervalo)
+            u_total = u_base + u_perturbado
+            v_total = v_base + v_perturbado
+            c, dt = avancar_intervalo(c, u_total, v_total, DIFUSAO, intervalo)
+        arraste.segmentos.clear()
+
+        desenhar_corante(tela, grade_rgb, c)
+        if arraste.anterior is None:
+            forca = (0.0, 0.0)
+        desenhar_interacao(tela, arraste.cursor, arraste.raio, forca)
+        estado = "PAUSADO" if pausado else "rodando"
+        texto = f"Campo: {campo_atual} | dt: {dt:.4f} | {estado} | Raio: {arraste.raio} px"
+        tela.blit(fonte.render(texto, True, (230, 230, 230)), (10, 10))
+        pg.display.flip()
+
+
+if __name__ == "__main__":
+    main()

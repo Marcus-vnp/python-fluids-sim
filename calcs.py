@@ -11,14 +11,19 @@ def criar_grade():
     return X, Y
 
 def celula_para_pixel(i, j):
-    x = i * TAMANHO_CELULA_X
-    y = VERTICAL - j * TAMANHO_CELULA_Y
-    return int(x), int(y)
+    return round(i * TAMANHO_CELULA_X), VERTICAL - 1 - round(j * TAMANHO_CELULA_Y)
+
+
+def pixel_para_fisico(x, y):
+    """Coordenadas contínuas no domínio fechado, inclusive nos pixels extremos."""
+    x = min(max(x, 0), HORIZONTAL - 1)
+    y = min(max(y, 0), VERTICAL - 1)
+    return x * Dx / TAMANHO_CELULA_X, (VERTICAL - 1 - y) * Dy / TAMANHO_CELULA_Y
+
 
 def pixel_para_celula(x, y):
-    i = x / TAMANHO_CELULA_X
-    j = (VERTICAL - y) / TAMANHO_CELULA_Y
-    return int(i), int(j)
+    xf, yf = pixel_para_fisico(x, y)
+    return round(xf / Dx), round(yf / Dy)
 
 # Fazer funcao de Campo de Rotacao para demosntracao
 def campo_horizontal(U0=1.0):
