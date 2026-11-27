@@ -192,3 +192,22 @@ As colunas mostram o mesmo campo rotacional antes e durante um arraste. Cada par
 | F1 | ![Corante](evidencias/f1-campo.png) | ![Corante deformado](evidencias/f1-arraste.png) |
 | F2 | ![Campo rotacional](evidencias/f2-campo.png) | ![Campo perturbado pelo mouse](evidencias/f2-arraste.png) |
 | F3 | ![Campo sobre o corante](evidencias/f3-campo.png) | ![Setas sobre a mancha deformada](evidencias/f3-arraste.png) |
+
+### Testes e desempenho da visualização
+
+Em 27/11/2026, os 17 testes anteriores e os seis testes da visualização passaram com `.venv/bin/python -m unittest discover -s tests -v`. O mesmo gesto, reproduzido com passos idênticos em F1, F2 e F3, gerou matrizes de velocidade e concentração idênticas, inclusive durante a evolução do corante oculto. A suíte verifica a direção das setas, o fator de escala de cada eixo, o limite de comprimento, a troca de densidade em pausa, o arraste, a soltura e a proteção das matrizes de entrada contra escrita durante o desenho.
+
+Médias em FPS no loop completo, com a grade de 128 × 72 e a janela de 1280 × 720. Cada execução usou o campo rotacional e um arraste contínuo por eventos Pygame. Foram 40 frames de aquecimento e 120 medidos por combinação, sem gravar capturas durante a medição. Na execução sem limitador, o relógio forneceu um intervalo fixo de 1/60 s à simulação. Nas demais, o relógio do Pygame controlou o intervalo real. O equipamento usou Fedora 44, Ryzen 7 5700U, Python 3.14.10, NumPy 2.5.5 e pygame-ce 2.5.8.
+
+| Modo | Densidade | SDL dummy sem limitador | SDL dummy, alvo 60 | Janela Wayland, alvo 60 |
+| --- | --- | ---: | ---: | ---: |
+| Corante antes da feature (`2459b36`) | — | 509,37 | 62,18 | — |
+| F1 Corante | — | 459,39 | 62,33 | 62,14 |
+| F2 Vetores | Baixa | 562,50 | 62,11 | 61,98 |
+| F2 Vetores | Média | 271,45 | 61,94 | 60,70 |
+| F2 Vetores | Alta | 94,50 | 62,08 | 62,05 |
+| F3 Combinado | Baixa | 312,66 | 62,03 | 62,15 |
+| F3 Combinado | Média | 176,47 | 62,03 | 62,17 |
+| F3 Combinado | Alta | 67,04 | 61,95 | 52,19 |
+
+Na densidade padrão, os dois modos com vetores atingiram a meta de 60 FPS na janela gráfica. Em F3 com densidade alta, desenhar até 2304 setas com contorno sobre o corante reduziu a média para 52,19 FPS nessa máquina. As médias são de execuções curtas. Os testes verificaram gestos reproduzíveis e as capturas do renderizador. A avaliação com mouse físico permanece pendente.
