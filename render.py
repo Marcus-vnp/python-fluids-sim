@@ -14,16 +14,39 @@ def desenhar_grade(tela):
         y = VERTICAL - j * TAMANHO_CELULA_Y
         pg.draw.line(tela, (60, 60, 60), (0, y), (HORIZONTAL, y), 1)
 
-# Funcao que desenha vetores para vizualizacao
-def desenhar_vetores(tela, u, v, escala=30):
-    passo = 4   # subamostra para não poluir
-    for i in range(0, Nx, passo):
-        for j in range(0, Ny, passo):
-            x0, y0 = celula_para_pixel(i, j)
-            x1 = int(x0 + u[i, j] * escala)
-            y1 = int(y0 - v[i, j] * escala)   # y invertido
-            pg.draw.line(tela, (0, 200, 255), (x0, y0), (x1, y1), 1)
-            pg.draw.circle(tela, (0, 200, 255), (x1, y1), 2)
+
+def geometria_vetores(u, v, passo):
+    """Pontos da haste e das duas asas, já projetados em pixels (N × 5 × 2)."""
+    inicio = passo // 2
+    amostra = np.s_[inicio::passo, inicio::passo]
+    us, vs = u[amostra], v[amostra]
+    i, j = np.nonzero(np.hypot(us, vs) > VELOCIDADE_MINIMA)
+    origens = np.column_stack((
+        (inicio + passo * i) * TAMANHO_CELULA_X,
+        VERTICAL - 1 - (inicio + passo * j) * TAMANHO_CELULA_Y,
+    ))
+    deslocamentos = TEMPO_VISUAL * np.column_stack((
+        us[i, j] * TAMANHO_CELULA_X / Dx, -vs[i, j] * TAMANHO_CELULA_Y / Dy,
+    ))
+    comprimentos = np.hypot(*deslocamentos.T)[:, None]
+    direcoes = deslocamentos / comprimentos
+    limite = min(COMPRIMENTO_MAXIMO, FRACAO_ESPACAMENTO * passo *
+                 min(TAMANHO_CELULA_X, TAMANHO_CELULA_Y))
+    comprimentos = np.minimum(comprimentos, limite)
+    pontas = origens + direcoes * comprimentos
+
+    profundidade = np.minimum(5.0, comprimentos * 0.42)
+    base = pontas - profundidade * direcoes
+    perpendicular = np.column_stack((-direcoes[:, 1], direcoes[:, 0]))
+    asa = 0.55 * profundidade * perpendicular
+    return np.stack((origens, pontas, base + asa, pontas, base - asa), axis=1)
+
+
+def desenhar_vetores(tela, u, v, passo=4, sobre_corante=False):
+    for pontos in geometria_vetores(u, v, passo).tolist():
+        if sobre_corante:
+            pg.draw.lines(tela, COR_CONTORNO_VETOR, False, pontos, 3)
+        pg.draw.aalines(tela, COR_VETOR, False, pontos)
 
 
 def desenhar_corante(tela, grade_rgb, c):

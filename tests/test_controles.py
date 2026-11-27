@@ -126,3 +126,64 @@ class ControlesPygame(unittest.TestCase):
         self.assertEqual(len(campos), 3)
         for campo in campos[1:]:
             np.testing.assert_array_equal(campo, campos[0])
+
+
+class ModosDeVisualizacao(unittest.TestCase):
+    def test_mesmos_campos_e_concentracoes_em_todos_os_modos(self):
+        # Repete o mesmo gesto nos três modos e observa inclusive o corante oculto.
+        gesto = [[clicar((620, 350))], [mover((660, 350))], [mover((660, 310))],
+                 [mover((620, 310))], [mover((620, 350))],
+                 [pg.event.Event(pg.MOUSEBUTTONUP, button=1, pos=(620, 350))], []]
+        referencia = None
+        for modo in (pg.K_F1, pg.K_F2, pg.K_F3):
+            concentracoes = []
+            avancar = main.avancar_intervalo
+
+            def observar(c, u, v, D, intervalo):
+                novo, dt = avancar(c, u, v, D, intervalo)
+                concentracoes.append(novo.copy())
+                return novo, dt
+
+            with (patch.object(main, "avancar_intervalo", observar),
+                  patch.object(main, "desenhar_vetores", wraps=main.desenhar_vetores) as vetores):
+                campos, visiveis, _ = executar_frames([[tecla(modo)]] + gesto)
+            self.assertEqual(len(visiveis), 0 if modo == pg.K_F2 else len(campos))
+            self.assertEqual(vetores.call_count, 0 if modo == pg.K_F1 else len(campos))
+            for desenho, campo in zip(vetores.call_args_list, campos):
+                np.testing.assert_array_equal(desenho.args[1:3], campo)
+            if referencia is None:
+                referencia = campos, concentracoes
+            else:
+                np.testing.assert_array_equal(campos, referencia[0])
+                np.testing.assert_array_equal(concentracoes, referencia[1])
+
+    def test_alterna_modo_e_densidade_mesmo_em_pausa(self):
+        lotes = [[tecla(pg.K_SPACE), tecla(pg.K_F2)], [tecla(pg.K_g), tecla(pg.K_1)],
+                 [tecla(pg.K_F3), tecla(pg.K_g)], [tecla(pg.K_F1)],
+                 [tecla(pg.K_g), tecla(pg.K_F2), tecla(pg.K_r)], [tecla(pg.K_SPACE)]]
+        with patch.object(main, "desenhar_vetores", wraps=main.desenhar_vetores) as vetores:
+            campos, corantes, _ = executar_frames(lotes)
+        self.assertEqual(len(campos), 1)
+        self.assertEqual(len(corantes), 2)
+        chamadas = vetores.call_args_list
+        self.assertEqual([c.args[3] for c in chamadas], [4, 2, 8, 4, 4])
+        self.assertEqual([c.kwargs["sobre_corante"] for c in chamadas],
+                         [False, False, True, False, False])
+        np.testing.assert_array_equal(chamadas[0].args[1:3], campo_rotacao(*criar_grade()))
+        for chamada in chamadas[1:]:
+            np.testing.assert_array_equal(chamada.args[1:3], campo_horizontal())
+
+    def test_troca_de_modo_durante_arraste_e_decaimento(self):
+        gesto = [[clicar((620, 350))], [mover((680, 350))],
+                 [pg.event.Event(pg.MOUSEWHEEL, y=2), mover((680, 290))],
+                 [pg.event.Event(pg.MOUSEBUTTONUP, button=1, pos=(680, 290))], []]
+        referencia, corante, indicadores = executar_frames(gesto)
+        teclas = [pg.K_F2, pg.K_F3, pg.K_F2, pg.K_F2, pg.K_F1]
+        lotes = [[tecla(modo), *eventos] for modo, eventos in zip(teclas, gesto)]
+        with patch.object(main, "desenhar_vetores", wraps=main.desenhar_vetores) as vetores:
+            campos, visiveis, indicadores_observados = executar_frames(lotes)
+        np.testing.assert_array_equal(campos, referencia)
+        np.testing.assert_array_equal(visiveis, [corante[1], corante[-1]])
+        self.assertEqual(indicadores_observados, indicadores)
+        for chamada, campo in zip(vetores.call_args_list, referencia):
+            np.testing.assert_array_equal(chamada.args[1:3], campo)

@@ -33,3 +33,15 @@ PERTURBACAO_MAXIMA = 2.0  # m / s simulado
 AMORTECIMENTO = 3.2       # 1 / s simulado
 MAX_SEGMENTOS = 128
 MAX_AMOSTRAS = 96
+
+# Visualização do campo de velocidades
+MODO_INICIAL = "Corante"
+DENSIDADES = (("Baixa", 8), ("Média", 4), ("Alta", 2))
+DENSIDADE_INICIAL = 1
+TEMPO_VISUAL = 0.024       # segundos simulados representados por uma seta
+COMPRIMENTO_MAXIMO = 38.0  # pixels
+FRACAO_ESPACAMENTO = 0.85
+VELOCIDADE_MINIMA = 0.02   # m/s simulado
+COR_VETOR = (111, 224, 247)
+COR_CONTORNO_VETOR = (13, 49, 63)
+FUNDO_VETORES = (8, 16, 22)
