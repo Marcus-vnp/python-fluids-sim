@@ -148,3 +148,37 @@ As medições foram feitas no Fedora 44 com AMD Ryzen 7 5700U, Python 3.14.10, N
 O relógio do Pygame opera em milissegundos, de modo que o limitador nominal de 60 permite médias ligeiramente superiores. O ensaio sem limitador usa um intervalo físico de referência de 1/60 s real por frame na versão interativa e mede a capacidade de processamento sem o custo do compositor.
 
 No ensaio contínuo com SDL dummy, o arraste percorreu a janela durante **301,039 s reais**, com **18.631 frames** e média de **61,89 FPS**. A maior norma de perturbação observada foi **1,12267 m/s simulado**. A cada frame foram verificadas a finitude das velocidades e da concentração, a faixa de concentração entre 0 e 1 e a norma máxima da perturbação.
+
+## Visualização do campo vetorial de velocidades
+
+Cada nó da grade tem uma velocidade instantânea $\mathbf V(x,y,t)=(u,v)$, em metros por segundo simulado. A componente $u$ descreve o movimento horizontal e $v$ o vertical. A rapidez é $\sqrt{u^2+v^2}$ e o ângulo físico em relação ao eixo $x$ positivo é $\theta=\operatorname{atan2}(v,u)$. Uma seta aponta na direção em que o campo transporta o corante naquele ponto e instante.
+
+As setas mostram $\mathbf V=\mathbf V_{base}+\mathbf V_{perturbado}$. Em cada atualização, o desenho recebe as mesmas matrizes usadas na advecção. A concentração continua evoluindo quando se observa apenas o campo. Em pausa, é possível alternar a representação para examinar a mesma distribuição de corante e de velocidades.
+
+### Como ler as setas
+
+A origem de cada seta corresponde a um nó amostrado. Para desenhar a ponta, projetamos o deslocamento que a velocidade produziria durante um intervalo gráfico fixo $\tau=0{,}024$ s. Na resolução padrão, os extremos do metro físico ficam separados por 1279 pixels na horizontal e 719 na vertical. O deslocamento projetado é
+
+$$
+(\Delta p_x,\Delta p_y)=\tau\left(u\,\frac{\mathrm{TAMANHO\_CELULA\_X}}{D_x},
+                                    -v\,\frac{\mathrm{TAMANHO\_CELULA\_Y}}{D_y}\right).
+$$
+
+Uma componente $v>0$ aponta para cima. As asas da ponta acompanham a direção **já projetada**. Por exemplo, na densidade média, uma velocidade horizontal de 1 m/s produz cerca de 31 pixels e uma vertical de 1 m/s produz cerca de 17 pixels. Para uma mesma direção, dobrar a rapidez dobra o comprimento até o limite de desenho. A diferença entre os eixos decorre da exibição do domínio quadrado em uma janela retangular.
+
+A escala temporal das setas é independente do passo de integração. Para evitar sobreposição, o comprimento satura no menor valor entre 38 pixels e 85% do menor espaçamento entre amostras na tela. Esse limite afeta apenas a representação gráfica. Rapidezes de até 0,02 m/s ficam ocultas. As setas do campo têm cor ciano fixa e recebem contorno escuro sobre o corante. A seta clara junto ao cursor indica a aceleração aplicada pelo gesto.
+
+| Tecla | O que aparece |
+| --- | --- |
+| F1 | Corante suavizado, modo inicial. |
+| F2 | Campo de velocidades sobre fundo escuro. |
+| F3 | Setas sobrepostas ao corante. |
+| G | Alterna a densidade média → alta → baixa → média. |
+
+A simulação usa sempre os 128 × 72 nós. O desenho escolhe um nó por bloco, próximo ao centro, em cada direção. Os passos 8, 4 e 2 dão até **144, 576 e 2304 setas** nas densidades baixa, média e alta. O HUD mostra a densidade quando os vetores estão visíveis.
+
+### Demonstrações de Cálculo III
+
+1. Pressione **1** e **F2** para ver um campo constante. As setas horizontais têm o mesmo comprimento. Arraste para cima sobre a mancha em **F3** e observe como a componente vertical local inclina as setas e desvia o corante.
+2. Pressione **2**, **R** e **F2**. No campo rotacional, o produto escalar da velocidade com o raio relativo ao centro é zero. As setas são tangentes às circunferências físicas, que aparecem como elipses na janela. Compare a rapidez perto e longe do centro.
+3. Em **F3**, faça um gesto circular, solte o botão e pause com **Espaço**. Alterne **F1/F2/F3**. Na equação de transporte, $\mathbf V\cdot\nabla c=u\,\partial_x c+v\,\partial_y c$ é a derivada direcional ao longo do versor da velocidade multiplicada pela rapidez (onde a velocidade é não nula). Uma velocidade tangente a uma curva de nível de $c$ dá contribuição advectiva local zero. Uma velocidade que cruza essa curva transporta concentrações diferentes para o ponto. Retome para observar o amortecimento e a evolução da mancha.
