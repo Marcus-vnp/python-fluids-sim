@@ -3,7 +3,7 @@ import pygame as pg
 
 from calcs import campo_horizontal, campo_rotacao, criar_grade
 from default import DIFUSAO, ESCALA_TEMPO, FPS, INTERVALO_REAL_MAXIMO, Nx, Ny, RESOLUCAO
-from default import FUNDO_VETORES, MODO_INICIAL
+from default import DENSIDADES, DENSIDADE_INICIAL, FUNDO_VETORES, MODO_INICIAL
 from interacao import Arraste, aceleracao_trajetoria, integrar_perturbacao
 from render import desenhar_corante, desenhar_interacao, desenhar_vetores
 from simulacao import avancar_intervalo
@@ -27,6 +27,7 @@ def main():
     pausado = False
     com_foco = True
     modo = MODO_INICIAL
+    densidade = DENSIDADE_INICIAL
     modos = {pg.K_F1: "Corante", pg.K_F2: "Vetores", pg.K_F3: "Combinado"}
     dt = 0.0
 
@@ -46,6 +47,8 @@ def main():
             elif evento.type == pg.KEYDOWN:
                 if evento.key in modos:
                     modo = modos[evento.key]
+                elif evento.key == pg.K_g:
+                    densidade = (densidade + 1) % len(DENSIDADES)
                 elif evento.key == pg.K_SPACE:
                     pausado = not pausado
                     arraste.cancelar()
@@ -84,18 +87,21 @@ def main():
             c, dt = avancar_intervalo(c, u_total, v_total, DIFUSAO, intervalo)
         arraste.segmentos.clear()
 
+        nome_densidade, passo = DENSIDADES[densidade]
         if modo == "Vetores":
             tela.fill(FUNDO_VETORES)
         else:
             desenhar_corante(tela, grade_rgb, c)
         if modo != "Corante":
-            desenhar_vetores(tela, u_total, v_total, sobre_corante=modo == "Combinado")
+            desenhar_vetores(tela, u_total, v_total, passo, sobre_corante=modo == "Combinado")
         if arraste.anterior is None:
             forca = (0.0, 0.0)
         desenhar_interacao(tela, arraste.cursor, arraste.raio, forca)
         estado = "PAUSADO" if pausado else "rodando"
         texto = f"Campo: {campo_atual} | dt: {dt:.4f} | {estado} | Raio: {arraste.raio} px"
         texto += f" | Modo: {modo}"
+        if modo != "Corante":
+            texto += f" | Densidade: {nome_densidade}"
         tela.blit(fonte.render(texto, True, (230, 230, 230), FUNDO_VETORES), (10, 10))
         pg.display.flip()
 
