@@ -24,3 +24,31 @@ def desenhar_vetores(tela, u, v, escala=30):
             y1 = int(y0 - v[i, j] * escala)   # y invertido
             pg.draw.line(tela, (0, 200, 255), (x0, y0), (x1, y1), 1)
             pg.draw.circle(tela, (0, 200, 255), (x1, y1), 2)
+
+
+def desenhar_corante(tela, grade_rgb, c):
+    # surfarray também usa (x, y). Inverter y alinha a mancha com o mouse.
+    valor = 2 * c[:, ::-1] / max(c.max(), 1e-6)
+    claro = 255 * np.clip(valor - 1, 0, 1)
+    pixels = pg.surfarray.pixels3d(grade_rgb)
+    pixels[:, :, 0] = 255 * np.clip(valor, 0, 1)
+    pixels[:, :, 1] = claro
+    pixels[:, :, 2] = claro * 0.3
+    del pixels  # destrava a superfície antes do redimensionamento
+    pg.transform.smoothscale(grade_rgb, tela.get_size(), tela)
+
+
+def desenhar_interacao(tela, cursor, raio, forca):
+    if cursor is None:
+        return
+    pg.draw.circle(tela, (138, 146, 148), cursor, raio, 1)
+    intensidade = np.hypot(*forca) / ACELERACAO_MAXIMA
+    if intensidade == 0:
+        return
+    direcao = pg.Vector2(forca[0] * TAMANHO_CELULA_X / Dx,
+                         -forca[1] * TAMANHO_CELULA_Y / Dy).normalize()
+    ponta = pg.Vector2(cursor) + direcao * (9 + 40 * intensidade)
+    cor = (220, 243, 245)
+    pg.draw.line(tela, cor, cursor, ponta, 2)
+    for angulo in (-28, 28):
+        pg.draw.line(tela, cor, ponta, ponta - 7 * direcao.rotate(angulo), 2)
