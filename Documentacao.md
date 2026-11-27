@@ -182,3 +182,13 @@ A simulação usa sempre os 128 × 72 nós. O desenho escolhe um nó por bloco, 
 1. Pressione **1** e **F2** para ver um campo constante. As setas horizontais têm o mesmo comprimento. Arraste para cima sobre a mancha em **F3** e observe como a componente vertical local inclina as setas e desvia o corante.
 2. Pressione **2**, **R** e **F2**. No campo rotacional, o produto escalar da velocidade com o raio relativo ao centro é zero. As setas são tangentes às circunferências físicas, que aparecem como elipses na janela. Compare a rapidez perto e longe do centro.
 3. Em **F3**, faça um gesto circular, solte o botão e pause com **Espaço**. Alterne **F1/F2/F3**. Na equação de transporte, $\mathbf V\cdot\nabla c=u\,\partial_x c+v\,\partial_y c$ é a derivada direcional ao longo do versor da velocidade multiplicada pela rapidez (onde a velocidade é não nula). Uma velocidade tangente a uma curva de nível de $c$ dá contribuição advectiva local zero. Uma velocidade que cruza essa curva transporta concentrações diferentes para o ponto. Retome para observar o amortecimento e a evolução da mancha.
+
+### Capturas da aplicação
+
+As colunas mostram o mesmo campo rotacional antes e durante um arraste. Cada par foi obtido pelo loop Pygame, repetindo a trajetória e o relógio nos três modos.
+
+| Modo | Antes do gesto | Durante o gesto |
+| --- | --- | --- |
+| F1 | ![Corante](evidencias/f1-campo.png) | ![Corante deformado](evidencias/f1-arraste.png) |
+| F2 | ![Campo rotacional](evidencias/f2-campo.png) | ![Campo perturbado pelo mouse](evidencias/f2-arraste.png) |
+| F3 | ![Campo sobre o corante](evidencias/f3-campo.png) | ![Setas sobre a mancha deformada](evidencias/f3-arraste.png) |
