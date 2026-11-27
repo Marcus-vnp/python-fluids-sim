@@ -3,8 +3,9 @@ import pygame as pg
 
 from calcs import campo_horizontal, campo_rotacao, criar_grade
 from default import DIFUSAO, ESCALA_TEMPO, FPS, INTERVALO_REAL_MAXIMO, Nx, Ny, RESOLUCAO
+from default import FUNDO_VETORES, MODO_INICIAL
 from interacao import Arraste, aceleracao_trajetoria, integrar_perturbacao
-from render import desenhar_corante, desenhar_interacao
+from render import desenhar_corante, desenhar_interacao, desenhar_vetores
 from simulacao import avancar_intervalo
 
 
@@ -25,6 +26,8 @@ def main():
     arraste = Arraste()
     pausado = False
     com_foco = True
+    modo = MODO_INICIAL
+    modos = {pg.K_F1: "Corante", pg.K_F2: "Vetores", pg.K_F3: "Combinado"}
     dt = 0.0
 
     while True:
@@ -41,7 +44,9 @@ def main():
             elif evento.type == pg.WINDOWFOCUSGAINED:
                 com_foco = True
             elif evento.type == pg.KEYDOWN:
-                if evento.key == pg.K_SPACE:
+                if evento.key in modos:
+                    modo = modos[evento.key]
+                elif evento.key == pg.K_SPACE:
                     pausado = not pausado
                     arraste.cancelar()
                 elif evento.key in (pg.K_r, pg.K_1, pg.K_2):
@@ -68,22 +73,30 @@ def main():
                 arraste.soltar()
 
         forca = (0.0, 0.0)
-        if np.isfinite(dt_real) and dt_real > 0 and not pausado:
+        avancando = np.isfinite(dt_real) and dt_real > 0 and not pausado
+        if avancando:
             intervalo = min(dt_real, INTERVALO_REAL_MAXIMO) * ESCALA_TEMPO
             forca = aceleracao_trajetoria(arraste.segmentos, arraste.raio, dt_real, X, Y, ax, ay)
             integrar_perturbacao(u_perturbado, v_perturbado, ax, ay, intervalo)
-            u_total = u_base + u_perturbado
-            v_total = v_base + v_perturbado
+        u_total = u_base + u_perturbado
+        v_total = v_base + v_perturbado
+        if avancando:
             c, dt = avancar_intervalo(c, u_total, v_total, DIFUSAO, intervalo)
         arraste.segmentos.clear()
 
-        desenhar_corante(tela, grade_rgb, c)
+        if modo == "Vetores":
+            tela.fill(FUNDO_VETORES)
+        else:
+            desenhar_corante(tela, grade_rgb, c)
+        if modo != "Corante":
+            desenhar_vetores(tela, u_total, v_total, sobre_corante=modo == "Combinado")
         if arraste.anterior is None:
             forca = (0.0, 0.0)
         desenhar_interacao(tela, arraste.cursor, arraste.raio, forca)
         estado = "PAUSADO" if pausado else "rodando"
         texto = f"Campo: {campo_atual} | dt: {dt:.4f} | {estado} | Raio: {arraste.raio} px"
-        tela.blit(fonte.render(texto, True, (230, 230, 230)), (10, 10))
+        texto += f" | Modo: {modo}"
+        tela.blit(fonte.render(texto, True, (230, 230, 230), FUNDO_VETORES), (10, 10))
         pg.display.flip()
 
 

@@ -35,6 +35,7 @@ MAX_SEGMENTOS = 128
 MAX_AMOSTRAS = 96
 
 # Visualização do campo de velocidades
+MODO_INICIAL = "Corante"
 TEMPO_VISUAL = 0.024       # segundos simulados representados por uma seta
 COMPRIMENTO_MAXIMO = 38.0  # pixels
 FRACAO_ESPACAMENTO = 0.85
